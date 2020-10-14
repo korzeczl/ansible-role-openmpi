@@ -1,0 +1,17 @@
+#%Module1.0#####################################################################'
+##
+## {{ pkg_name }} version {{ pkg_ver }} built with {{ pkg_compiler }}
+##
+proc ModulesHelp { } {
+        puts stderr "\t {{ pkg_name }} version {{ pkg_ver }} built with {{ pkg_compiler }}"
+}
+ 
+module-whatis   "{{ pkg_name }} "
+ 
+set libHome {{ pkg_home }}
+prepend-path    LD_LIBRARY_PATH $libHome/lib
+prepend-path    PATH    $libHome/bin
+ 
+if [ module-info mode load ] {
+   puts stderr "\t loading {{ pkg_name }} version {{ pkg_ver }} for {{ pkg_compiler }} "
+}

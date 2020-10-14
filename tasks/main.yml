@@ -1,0 +1,111 @@
+---
+# tasks file for openmpi
+
+- name: include assert.yml
+  include_tasks: assert.yml
+
+- name: Decompose openmpi version
+  set_fact:
+    openmpi_major_version: "{{ openmpi_version.split('.')[0] }}"
+    openmpi_micro_version: "{{ openmpi_version.split('.')[1] }}"
+    openmpi_minor_version: "{{ openmpi_version.split('.')[2] }}"
+
+- name: Get gcc version
+  command: "{{ CC }} -dumpversion"
+  register: gcc_version
+
+- name: Define openmpi install directory
+  set_fact:
+    openmpi_install_dir: "{{ openmpi_install_dir | default( ['/opt', role_name, [openmpi_version, gcc_version] | join('-gcc') ] | join('/') ) }}"
+
+- name: "Install Openmpi version {{ openmpi_version }}"
+  block:
+
+    - name: Define download, checksum urls
+      set_fact:
+        openmpi_source_url: "https://download.open-mpi.org/release/open-mpi/v{{ openmpi_major_version }}.{{ openmpi_micro_version }}/openmpi-{{ openmpi_version }}.tar.gz"
+
+    - name: Set openmpi paths
+      set_fact:
+        openmpi_build_path: "{{ build_dir }}/{{ role_name }}/{{ openmpi_version }}"
+        openmpi_download_path: "{{ download_dir }}/{{ role_name }}/{{ openmpi_version }}"
+
+    - name: Creates openmpi directories if not exists
+      file:
+        path: "{{ _item }}"
+        state: directory
+      with_items:
+        - "{{ openmpi_build_path }}"
+        - "{{ openmpi_download_path }}"
+        - "{{ openmpi_install_dir }}"
+      loop_control:
+        loop_var: _item
+
+    - name: Download openmpi sources
+      get_url:
+        url: "{{ openmpi_source_url }}"
+        dest: "{{ download_dir }}"
+      register: openmpi_source_archive
+
+    - name: Unarchive file
+      unarchive:
+        src: "{{ openmpi_source_archive.dest }}"
+        dest: "{{ openmpi_download_path }}"
+        remote_src: yes
+      register: openmpi_source_dir
+
+    # Installing
+    - name: Install openmpi
+      command: " {{ _item }} "
+      args:
+        chdir: "{{ openmpi_build_path }}"
+      with_items:
+        - "LD_LIBRARY_PATH={{ LD }} CC={{ CC }} CXX={{ CXX }} FC={{ F90 }} {{ openmpi_source_dir.dest }}/openmpi-{{ openmpi_version }}/configure  {{ openmpi_configure_args | join(' ') }}"
+        - "make -j 12"
+        - "make install"
+      loop_control:
+        loop_var: _item
+      register: openmpi_install
+
+- name: Create a module for OpenMPI
+  block:
+
+    - name: Installation of environment modules if not present
+      yum:
+        name:
+          - environment-modules.x86_64
+        state: present
+
+    - name: Define module_home variable if not previously defined
+      set_fact:
+        modules_home: "{{ modules_home | default( '/etc/modulefiles' ) }}"
+
+    - name: Define openmpi_module_dir variable
+      set_fact:
+        openmpi_module_dir: "{{ modules_home }}/mpi/"
+
+    - name: Creates openmpi directories if not exists
+      file:
+        path: "{{ openmpi_module_dir }}"
+        state: directory
+
+    - name: Add modulefile for openmpi
+      template:
+        src: "{{ _item  }}"
+        dest: "{{ openmpi_module_dir }}/{{ _item  | regex_replace('module.j2', openmpi_version ) }}"
+      loop_control:
+        loop_var: _item
+      with_items:
+        - "module.j2"
+      vars:
+        pkg_home: "{{ openmpi_install_dir }}/{{ openmpi_version }}"
+        pkg_name: "{{role_name}}"
+        pkg_ver: "{{ openmpi_version }}"
+        pkg_compiler: "gcc-{{ gcc_version }}"
+
+- name: Define MPICC, MPICXX, MPIF90, MPIEXEC
+  set_fact:
+    MPICC: "{{ openmpi_install_dir}}/bin/mpicc"
+    MPICXX: "{{ openmpi_install_dir }}/bin/mpicxx"
+    MPIF90: "{{ openmpi_install_dir }}/bin/mpifort"
+    MPIEXEC: "{{ openmpi_install_dir }}/bin/mpiexec"

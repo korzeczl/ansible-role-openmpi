@@ -1,0 +1,23 @@
+galaxy_info:
+  role_name: openmpi
+  author: Laurent Korzeczek
+  description: Install openmpi from sources
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  license: MIT
+
+  min_ansible_version: 2.1
+
+  platforms:
+   - name: EL
+     versions:
+     - 7
+
+  galaxy_tags: [openmpi, mpi, message passing interface, build, sources, parallel processing]
+
+dependencies: []
+  # List your role dependencies here, one per line. Be sure to remove the '[]' above,
+  # if you add dependencies to this list.

@@ -1,0 +1,7 @@
+---
+# defaults file for openmpi
+
+openmpi_version: 4.0.5
+
+openmpi_configure_args:
+  - --prefix="{{ openmpi_install_dir }}"

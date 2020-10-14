@@ -1,0 +1,26 @@
+---
+# assertion for openmpi
+
+- name: Define required directories
+  set_fact:
+    build_dir: "{{ build_dir | default( '/tmp/build' ) }}"
+    download_dir: "{{ download_dir | default( '/tmp/download' ) }}"
+    modules_home: "{{ modules_home | default( '/etc/modulefiles' ) }}"
+
+- name: Display download, build and module path
+  debug:
+    msg:
+    - "Downloads path: {{ download_dir }}"
+    - "Build path: {{ build_dir }}"
+    - "Environment module: {{ modules_home }}"
+
+- name: Test gcc compiler is defined
+  assert:
+    that:
+      - gcc_version is defined
+    fail_msg: "Please set 'gcc_version'"
+    success_msg: "gcc correctly defined"
+
+- name: Add GCC_LD to LD_lIBRARY_PATH
+  set_fact:
+    LD: "{{ [GCC_LD, '$LD_LIBRARY_PATH'] | join(':') }}"
