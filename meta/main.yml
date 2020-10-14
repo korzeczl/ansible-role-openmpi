@@ -16,7 +16,7 @@ galaxy_info:
      versions:
      - 7
 
-  galaxy_tags: [openmpi, mpi, message passing interface, build, sources, parallel processing]
+  galaxy_tags: [openmpi, mpi, message, passing, interface, build, sources, parallel, processing]
 
 dependencies: []
   # List your role dependencies here, one per line. Be sure to remove the '[]' above,

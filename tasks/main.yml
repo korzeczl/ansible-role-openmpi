@@ -99,7 +99,7 @@
         - "module.j2"
       vars:
         pkg_home: "{{ openmpi_install_dir }}/{{ openmpi_version }}"
-        pkg_name: "{{role_name}}"
+        pkg_name: "{{ role_name }}"
         pkg_ver: "{{ openmpi_version }}"
         pkg_compiler: "gcc-{{ gcc_version }}"
 
