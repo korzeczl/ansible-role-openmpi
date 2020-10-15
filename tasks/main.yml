@@ -10,13 +10,54 @@
     openmpi_micro_version: "{{ openmpi_version.split('.')[1] }}"
     openmpi_minor_version: "{{ openmpi_version.split('.')[2] }}"
 
-- name: Get gcc version
-  command: "{{ CC }} -dumpversion"
-  register: gcc_version
-
 - name: Define openmpi install directory
   set_fact:
     openmpi_install_dir: "{{ openmpi_install_dir | default( ['/opt', role_name, [openmpi_version, gcc_version] | join('-gcc') ] | join('/') ) }}"
+
+- name: Check if build is needed
+  block:
+    - name: Set path to requested openmpi executable
+      set_fact:
+        _mpicc_executable: "{{ openmpi_install_dir }}/bin/mpicc"
+
+    - name: Check that requested mpicc exists
+      stat:
+        path: "{{ _mpicc_executable }}"
+      register: stat_mpicc
+
+    - name: Get requested gcc version
+      command: "{{ _mpicc_executable }} -dumpversion"
+      register: _gcc_version
+      when: stat_mpicc.stat.exists
+
+    - name: Set path to requested openmpi executable
+      set_fact:
+        _ompi_info_executable: "{{ openmpi_install_dir }}/bin/ompi_info"
+
+    - name: Check that requested ompi_info exists
+      stat:
+        path: "{{ _ompi_info_executable }}"
+      register: stat_ompi_info
+
+    - name: Get requested mpi version
+      shell: "{{ _ompi_info_executable }} --version | grep -oP '(\\d.?)*'"
+      register: _openmpi_version
+      when: stat_ompi_info.stat.exists
+
+    - name: Get requested ompi configure options
+      shell: "{{ _ompi_info_executable }} | sed -rn '/Configure command/p' | grep -oP '(?<=Configure command line: ).*' | sed s/\\'//g"
+      register: _ompi_configure
+      when: stat_ompi_info.stat.exists
+
+    - name: Check if build is needed
+      set_fact:
+        build_needed: "True"
+      when:
+        - "(_gcc_version.stdout is defined  and  (_gcc_version.stdout != gcc_version) | bool) or
+           (_openmpi_version.stdout is defined  and  (_openmpi_version.stdout != openmpi_version) | bool) or
+           (_ompi_configure.stdout is defined and not ((_ompi_configure.stdout.split() | sort) == (openmpi_configure_args | sort)) ) or
+           ( not stat_mpicc.stat.exists ) "
+
 
 - name: "Install Openmpi version {{ openmpi_version }}"
   block:
@@ -56,7 +97,7 @@
 
     # Installing
     - name: Install openmpi
-      command: " {{ _item }} "
+      shell: " {{ _item }} "
       args:
         chdir: "{{ openmpi_build_path }}"
       with_items:
@@ -66,6 +107,7 @@
       loop_control:
         loop_var: _item
       register: openmpi_install
+  when: build_needed is defined
 
 - name: Create a module for OpenMPI
   block:
@@ -98,7 +140,7 @@
       with_items:
         - "module.j2"
       vars:
-        pkg_home: "{{ openmpi_install_dir }}/{{ openmpi_version }}"
+        pkg_home: "{{ openmpi_install_dir }}"
         pkg_name: "{{ role_name }}"
         pkg_ver: "{{ openmpi_version }}"
         pkg_compiler: "gcc-{{ gcc_version }}"
