@@ -124,7 +124,7 @@
 
     - name: Define openmpi_module_dir variable
       set_fact:
-        openmpi_module_dir: "{{ modules_home }}/mpi/"
+        openmpi_module_dir: "{{ modules_home }}/openmpi/"
 
     - name: Creates openmpi directories if not exists
       file:
